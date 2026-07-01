@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AdminStatus {
+  active
+  disabled
+}
+
+enum ScheduleKind {
+  daily
+  one_time_single_date
+  one_time_date_range
+}
+
+enum RunTriggerType {
+  manual
+  schedule
+}
+
+enum AutomationRunStatus {
+  queued
+  running
+  completed
+  failed
+  cancelled
+}
+
+enum CareLogStatus {
+  skipped
+  ready_for_review
+  approved
+  signed
+  failed
+}
+
+enum AuditAction {
+  admin_login
+  credentials_updated
+  manual_run_started
+  schedule_created
+  schedule_updated
+  schedule_deleted
+  automation_run_started
+  automation_run_completed
+  care_log_skipped
+  care_log_ready_for_review
+  care_log_approved
+  care_log_signed
+  care_log_failed
+}
+
+model Admin {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  passwordHash String
+  name         String?
+  status       AdminStatus @default(active)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  approvedCareLogs CareLogItem[] @relation("CareLogApprovedBy")
+  auditLogs        AuditLog[]
+}
+
+model TargetSiteCredential {
+  id                  String   @id @default(cuid())
+  targetUrl           String
+  username            String
+  encryptedPassword   String
+  passwordIv          String
+  passwordAuthTag     String
+  signatureTemplate   String   @default("// {{careManagerName}} //")
+  captureSnapshots    Boolean  @default(false)
+  updatedByAdminId    String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model AutomationSchedule {
+  id             String       @id @default(cuid())
+  name           String
+  kind           ScheduleKind
+  timezone       String
+  timeOfDay      String?
+  startDate      DateTime?
+  endDate        DateTime?
+  runOnceAt      DateTime?
+  enabled        Boolean      @default(true)
+  lastQueuedAt   DateTime?
+  createdByAdmin String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  runs AutomationRun[]
+}
+
+model AutomationRun {
+  id                  String              @id @default(cuid())
+  triggerType         RunTriggerType
+  status              AutomationRunStatus @default(queued)
+  scheduleId          String?
+  dateFrom            DateTime
+  dateTo              DateTime
+  timezone            String
+  startedAt           DateTime?
+  completedAt         DateTime?
+  totalRowsFound      Int                 @default(0)
+  skippedCount        Int                 @default(0)
+  readyForReviewCount Int                 @default(0)
+  signedCount         Int                 @default(0)
+  failedCount         Int                 @default(0)
+  errorMessage        String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  schedule AutomationSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  careLogs CareLogItem[]
+
+  @@index([status])
+  @@index([dateFrom, dateTo])
+}
+
+model CareLogItem {
+  id                    String        @id @default(cuid())
+  runId                 String
+  clientName            String
+  careLogDate           DateTime
+  sourceUrl             String
+  reportRowKey          String
+  clientSigned          Boolean       @default(false)
+  caregiverSigned       Boolean       @default(false)
+  allTasksChecked       Boolean       @default(false)
+  status                CareLogStatus
+  skipReason            String?
+  careManagerName       String?
+  screenshotPath        String?
+  htmlSnapshotPath      String?
+  currentUrlOnError     String?
+  errorStep             String?
+  errorMessage          String?
+  approvedByAdminId     String?
+  approvedAt            DateTime?
+  signedAt              DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  run             AutomationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  approvedByAdmin Admin?        @relation("CareLogApprovedBy", fields: [approvedByAdminId], references: [id], onDelete: SetNull)
+  tasks           CareLogTask[]
+
+  @@unique([reportRowKey, careLogDate])
+  @@index([status])
+  @@index([runId])
+}
+
+model CareLogTask {
+  id            String   @id @default(cuid())
+  careLogItemId String
+  taskTime      String?
+  taskName      String
+  statusLabel   String
+  isChecked     Boolean
+  createdAt     DateTime @default(now())
+
+  careLogItem CareLogItem @relation(fields: [careLogItemId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id            String      @id @default(cuid())
+  action        AuditAction
+  adminId       String?
+  runId         String?
+  careLogItemId String?
+  metadata      Json?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime    @default(now())
+
+  admin Admin? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([action])
+  @@index([runId])
+  @@index([careLogItemId])
+}
