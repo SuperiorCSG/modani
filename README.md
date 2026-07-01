@@ -10,6 +10,7 @@ Admin-only web tool for running a configurable care-log signing automation.
 - Manual runs for yesterday or a custom date range.
 - Daily recurring schedules and one-time scheduled runs.
 - Run history with progress logs and signing summary.
+- Dry-run mode to verify eligible care logs before submitting signatures.
 - Playwright-based automation runner with editable selectors for the target website.
 
 ## Run locally
@@ -39,7 +40,11 @@ npx playwright install chromium
 
 ## Automation setup
 
-The admin settings page includes a selector JSON editor. Replace the defaults with selectors from the actual website before running the automation. The runner performs these steps:
+The default target URL is `https://caringcompanionsmacon.clearcareonline.com/`.
+Enter the website username/password in the admin settings page; credentials are
+stored only in the local encrypted data file and should not be committed.
+
+The admin settings page includes a selector JSON editor. Replace the defaults with selectors from the actual website if WellSky changes its HTML. The runner performs these steps:
 
 1. Log in to the configured website.
 2. Open the Reports tab.
@@ -48,3 +53,6 @@ The admin settings page includes a selector JSON editor. Replace the defaults wi
 5. Open eligible `Not Signed` care logs.
 6. Skip care logs with any incomplete task.
 7. Sign completed care logs as care manager using the manager name shown in the signing dialog.
+
+Keep dry-run mode enabled while validating selectors. Disable dry-run only when
+the admin is ready for the tool to submit live care-manager signatures.

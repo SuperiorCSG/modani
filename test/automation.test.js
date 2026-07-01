@@ -20,9 +20,19 @@ beforeAll(async () => {
       page(`
         <form action="/reports" method="get">
           <input name="username" />
-          <input name="password" type="password" />
-          <button type="submit">Login</button>
+          <div id="div_password" style="display:none"><input name="password" type="password" /></div>
+          <input id="id_btn_sso" type="button" value="Continue" />
+          <input id="id_btn_signin" value="Login" style="display:none" />
         </form>
+        <script>
+          document.querySelector("#id_btn_sso").addEventListener("click", function () {
+            document.querySelector("#div_password").style.display = "block";
+            document.querySelector("#id_btn_sso").style.display = "none";
+            const signin = document.querySelector("#id_btn_signin");
+            signin.style.display = "inline-block";
+            signin.type = "submit";
+          });
+        </script>
       `)
     );
   });
@@ -90,6 +100,7 @@ describe("unsigned care log automation", () => {
         username: "admin",
         password: "secret",
         headless: true,
+        dryRun: false,
         timeoutMs: 5000,
         selectors: DEFAULT_SELECTORS
       },
@@ -105,9 +116,39 @@ describe("unsigned care log automation", () => {
       scannedReports: 2,
       openedCareLogs: 2,
       skippedIncompleteTasks: 1,
+      readyToSignCareLogs: 1,
       signedCareLogs: 1
     });
     expect(logs.join("\n")).toContain("Signed care log from row 1.");
     expect(logs.join("\n")).toContain("Skipping care log from row 2");
+  }, 20000);
+
+  it("does not submit signatures when dry run is enabled", async () => {
+    const logs = [];
+    const summary = await runUnsignedCareLogAutomation({
+      settings: {
+        targetUrl: `${baseUrl}/login`,
+        username: "admin",
+        password: "secret",
+        headless: true,
+        dryRun: true,
+        timeoutMs: 5000,
+        selectors: DEFAULT_SELECTORS
+      },
+      requestedRange: {
+        dateMode: "custom",
+        fromDate: "2026-06-01",
+        toDate: "2026-06-02"
+      },
+      log: (message) => logs.push(message)
+    });
+
+    expect(summary).toMatchObject({
+      dryRun: true,
+      readyToSignCareLogs: 1,
+      signedCareLogs: 0
+    });
+    expect(logs.join("\n")).toContain("Dry run is enabled");
+    expect(logs.join("\n")).toContain("Dry run: care log from row 1 is ready to sign.");
   }, 20000);
 });

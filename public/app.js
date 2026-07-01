@@ -80,7 +80,7 @@ function renderRuns() {
     const row = document.createElement("div");
     row.className = "list-row";
     const summary = run.summary
-      ? `Scanned ${run.summary.scannedReports}, opened ${run.summary.openedCareLogs}, signed ${run.summary.signedCareLogs}, skipped ${run.summary.skippedIncompleteTasks}.`
+      ? `Scanned ${run.summary.scannedReports}, opened ${run.summary.openedCareLogs}, ready ${run.summary.readyToSignCareLogs || 0}, signed ${run.summary.signedCareLogs}, skipped ${run.summary.skippedIncompleteTasks}${run.summary.dryRun ? " (dry run)" : ""}.`
       : run.error || "Waiting for result.";
     const logs = run.logs?.map((entry) => `${formatDate(entry.at)} - ${entry.message}`).join("\n") || "";
     row.innerHTML = `
@@ -101,6 +101,7 @@ function renderSettings() {
   document.querySelector("#target-url").value = settings.targetUrl || "";
   document.querySelector("#target-username").value = settings.username || "";
   document.querySelector("#headless").checked = settings.headless !== false;
+  document.querySelector("#dry-run").checked = settings.dryRun !== false;
   document.querySelector("#timeout-ms").value = settings.timeoutMs || 30000;
   document.querySelector("#selectors").value = JSON.stringify(settings.selectors, null, 2);
 }
@@ -165,6 +166,7 @@ document.querySelector("#settings-form").addEventListener("submit", async (event
         username: document.querySelector("#target-username").value,
         password: document.querySelector("#target-password").value,
         headless: document.querySelector("#headless").checked,
+        dryRun: document.querySelector("#dry-run").checked,
         timeoutMs: document.querySelector("#timeout-ms").value,
         selectors
       })

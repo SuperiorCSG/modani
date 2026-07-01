@@ -6,14 +6,16 @@ import { DEFAULT_SELECTORS } from "./defaultSelectors.js";
 import { decryptSecret, encryptSecret } from "./cryptoBox.js";
 
 const DATA_FILE = process.env.DATA_FILE || path.join(process.cwd(), "data", "db.json");
+const DEFAULT_TARGET_URL = "https://caringcompanionsmacon.clearcareonline.com/";
 
 const emptyState = () => ({
   admin: null,
   settings: {
-    targetUrl: "",
+    targetUrl: DEFAULT_TARGET_URL,
     username: "",
     passwordEncrypted: "",
     headless: true,
+    dryRun: true,
     timeoutMs: 30000,
     selectors: DEFAULT_SELECTORS
   },
@@ -145,10 +147,11 @@ export function saveAutomationSettings(settings) {
 
   state.settings = {
     ...state.settings,
-    targetUrl: settings.targetUrl || "",
+    targetUrl: settings.targetUrl || DEFAULT_TARGET_URL,
     username: settings.username || "",
     passwordEncrypted,
     headless: settings.headless !== false,
+    dryRun: settings.dryRun !== false,
     timeoutMs: Number(settings.timeoutMs) || 30000,
     selectors: deepMerge(DEFAULT_SELECTORS, settings.selectors || {})
   };

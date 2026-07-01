@@ -1,8 +1,9 @@
 export const DEFAULT_SELECTORS = {
   login: {
-    username: "input[name='username']",
-    password: "input[name='password']",
-    submit: "button[type='submit']"
+    username: "#id_username, input[name='username']",
+    usernameContinue: "#id_btn_sso",
+    password: "#id_password, input[name='password']",
+    submit: "#id_btn_signin, button:has-text('Login'), input[type='submit']"
   },
   navigation: {
     reportsTab: "text=Reports"

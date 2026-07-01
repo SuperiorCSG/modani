@@ -101,15 +101,21 @@ export async function runUnsignedCareLogAutomation({
 
   const selectors = settings.selectors;
   const dateRange = resolveDateRange(requestedRange);
+  const dryRun = settings.dryRun !== false;
   const summary = {
     dateRange,
+    dryRun,
     scannedReports: 0,
     openedCareLogs: 0,
     skippedIncompleteTasks: 0,
+    readyToSignCareLogs: 0,
     signedCareLogs: 0
   };
 
   log(`Launching browser for ${settings.targetUrl}.`);
+  if (dryRun) {
+    log("Dry run is enabled; completed care logs will not be submitted.");
+  }
   const browser = await browserType.launch({
     headless: settings.headless !== false
   });
@@ -120,9 +126,17 @@ export async function runUnsignedCareLogAutomation({
 
     log("Opening target website and signing in.");
     await page.goto(settings.targetUrl, { waitUntil: "domcontentloaded" });
-    await page.locator(pick(selectors, "login", "username")).fill(settings.username);
-    await page.locator(pick(selectors, "login", "password")).fill(settings.password);
-    await page.locator(pick(selectors, "login", "submit")).click();
+    await page.locator(pick(selectors, "login", "username")).first().fill(settings.username);
+    if (selectors.login.usernameContinue) {
+      const usernameContinue = page.locator(selectors.login.usernameContinue).first();
+      if ((await usernameContinue.count()) > 0 && (await usernameContinue.isVisible())) {
+        await usernameContinue.click();
+      }
+    }
+    const passwordField = page.locator(pick(selectors, "login", "password")).first();
+    await passwordField.waitFor({ state: "visible" });
+    await passwordField.fill(settings.password);
+    await page.locator(pick(selectors, "login", "submit")).first().click();
 
     log("Opening report section.");
     await page.locator(pick(selectors, "navigation", "reportsTab")).click();
@@ -182,15 +196,24 @@ export async function runUnsignedCareLogAutomation({
         continue;
       }
 
-      await signCareLog(activeCareLogPage, selectors);
-      summary.signedCareLogs += 1;
-      log(`Signed care log from row ${index + 1}.`);
+      summary.readyToSignCareLogs += 1;
+      if (dryRun) {
+        log(`Dry run: care log from row ${index + 1} is ready to sign.`);
+      } else {
+        await signCareLog(activeCareLogPage, selectors);
+        summary.signedCareLogs += 1;
+        log(`Signed care log from row ${index + 1}.`);
+      }
       if (careLogPage) {
         await careLogPage.close();
       }
     }
 
-    log(`Run complete: signed ${summary.signedCareLogs} care logs.`);
+    log(
+      dryRun
+        ? `Run complete: ${summary.readyToSignCareLogs} care logs are ready to sign.`
+        : `Run complete: signed ${summary.signedCareLogs} care logs.`
+    );
     return summary;
   } finally {
     await browser.close();

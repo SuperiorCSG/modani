@@ -59,6 +59,10 @@ describe("admin automation API", () => {
     const agent = await loginAgent();
     const stateResponse = await agent.get("/api/state").expect(200);
     expect(stateResponse.body.adminConfigured).toBe(true);
+    expect(stateResponse.body.settings.targetUrl).toBe(
+      "https://caringcompanionsmacon.clearcareonline.com/"
+    );
+    expect(stateResponse.body.settings.dryRun).toBe(true);
   });
 
   it("saves target settings without exposing the password", async () => {
@@ -70,6 +74,7 @@ describe("admin automation API", () => {
         username: "automation-user",
         password: "target-password",
         headless: true,
+        dryRun: true,
         timeoutMs: 20000,
         selectors: {
           login: {
