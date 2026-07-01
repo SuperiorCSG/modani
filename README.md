@@ -27,7 +27,7 @@ ENCRYPTION_KEY=<32-byte encryption key>
 DATABASE_URL=<postgres database url>
 REDIS_URL=<redis url>
 SESSION_SECRET=<secure random secret>
-SIGNATURE_TEMPLATE="// {{careManagerName}} //"
+SIGNATURE_TEMPLATE="/{{careManagerName}}/"
 AUTOMATION_CAPTURE_SNAPSHOTS=false
 ENABLE_MOCK_PREVIEW=false
 ```

@@ -17,6 +17,7 @@ export type ReportRow = {
   clientName: string;
   careLogDate: Date;
   sourceUrl?: string;
+  activityLabel?: string;
   clientSigned: boolean;
   caregiverSigned: boolean;
   notSignedLabel?: string;

@@ -74,7 +74,7 @@ model TargetSiteCredential {
   encryptedPassword   String
   passwordIv          String
   passwordAuthTag     String
-  signatureTemplate   String   @default("// {{careManagerName}} //")
+  signatureTemplate   String   @default("/{{careManagerName}}/")
   captureSnapshots    Boolean  @default(false)
   updatedByAdminId    String?
   createdAt           DateTime @default(now())

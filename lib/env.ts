@@ -10,7 +10,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().optional(),
   REDIS_URL: z.string().url().default("redis://localhost:6379"),
   SESSION_SECRET: z.string().min(32).optional(),
-  SIGNATURE_TEMPLATE: z.string().default("// {{careManagerName}} //"),
+  SIGNATURE_TEMPLATE: z.string().default("/{{careManagerName}}/"),
   AUTOMATION_CAPTURE_SNAPSHOTS: z
     .enum(["true", "false"])
     .default("false")

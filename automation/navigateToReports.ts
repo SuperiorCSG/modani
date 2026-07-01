@@ -1,14 +1,20 @@
 import type { Page } from "playwright";
-import { clickByText, selectors } from "@/automation/selectors";
+import { selectors } from "@/automation/selectors";
 
 export async function navigateToReports(page: Page): Promise<void> {
-  await clickByText(page, selectors.navigation.reportsText);
+  const reportsLink = page.getByRole("link", { name: "Reports" }).first();
+  if (await reportsLink.isVisible().catch(() => false)) {
+    await reportsLink.click();
+  } else {
+    await page.locator(selectors.navigation.reportsLink.join(",")).first().click();
+  }
   await page.waitForLoadState("domcontentloaded").catch(() => undefined);
 
-  const unsignedCareLogs = page.getByText(selectors.navigation.unsignedCareLogsText[0]).first();
-  if (await unsignedCareLogs.isVisible().catch(() => false)) {
-    await unsignedCareLogs.click();
+  const reportType = page.locator(selectors.reports.reportTypeSelect).first();
+  if (await reportType.isVisible().catch(() => false)) {
+    await reportType.selectOption(selectors.reports.unsignedCareLogsValue);
     await page.waitForLoadState("domcontentloaded").catch(() => undefined);
+    await page.waitForSelector(selectors.reports.fromDateInput, { state: "attached", timeout: 10_000 }).catch(() => undefined);
   }
 
   const bodyText = await page.locator("body").innerText().catch(() => "");

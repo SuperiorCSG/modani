@@ -1,4 +1,4 @@
-import { chromium } from "playwright";
+import { chromium, type Page } from "playwright";
 import { AuditAction, CareLogStatus } from "@prisma/client";
 import { db } from "@/lib/db";
 import { decryptSecret } from "@/lib/encryption";
@@ -7,6 +7,11 @@ import { loginToTargetSite } from "@/automation/loginToTargetSite";
 import { selectors } from "@/automation/selectors";
 
 function extractCareManagerName(text: string): string {
+  const loginMatch = text.match(/You are logged in as\s+(.+?)\./i);
+  if (loginMatch?.[1]) {
+    return loginMatch[1].trim();
+  }
+
   const lines = text
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -19,6 +24,32 @@ function extractCareManagerName(text: string): string {
 
 function renderSignature(template: string, careManagerName: string): string {
   return template.replaceAll("{{careManagerName}}", careManagerName);
+}
+
+function careLogIdFromUrl(url: string): string | null {
+  return url.match(/\/carelog\/(\d+)/)?.[1] ?? url.match(/\/edit-carelog\/(\d+)/)?.[1] ?? null;
+}
+
+async function expandCareLogPanel(page: Page, sourceUrl: string) {
+  const careLogId = careLogIdFromUrl(sourceUrl);
+  if (!careLogId) {
+    return page.locator("body");
+  }
+
+  const panel = page.locator(`.tasks:has(a.edit-carelog[href*="/${careLogId}/"])`).first();
+  if ((await panel.count()) === 0) {
+    return page.locator("body");
+  }
+
+  if (!(await panel.isVisible().catch(() => false))) {
+    await panel.evaluate((element) => {
+      if (element.previousElementSibling instanceof HTMLElement) {
+        element.previousElementSibling.click();
+      }
+    });
+    await page.waitForTimeout(300);
+  }
+  return panel;
 }
 
 async function getCredentials() {
@@ -61,42 +92,29 @@ export async function approveAndSignCareLog(input: {
     await loginToTargetSite(page, credentials);
     await page.goto(item.sourceUrl, { waitUntil: "domcontentloaded" });
 
-    for (const text of selectors.careLog.signatureButtons) {
-      const button = page.getByRole("button", { name: text }).first();
-      const link = page.getByRole("link", { name: text }).first();
-      const clickable = (await button.isVisible().catch(() => false)) ? button : link;
+    const scope = await expandCareLogPanel(page, item.sourceUrl);
+
+    for (const selector of selectors.careLog.signatureLinks) {
+      const clickable = scope.locator(selector).first();
       if (await clickable.isVisible().catch(() => false)) {
-        const popupPromise = context.waitForEvent("page", { timeout: 10_000 }).catch(() => null);
         await clickable.click();
-        const popup = (await popupPromise) ?? page;
-        await popup.waitForLoadState("domcontentloaded").catch(() => undefined);
-        const popupText = await popup.locator("body").innerText();
+        const dialog = page.locator(".ui-dialog").filter({ hasText: "Sign This Care Log" }).last();
+        await dialog.waitFor({ state: "visible", timeout: 10_000 });
+        const popupText = await dialog.innerText();
         const careManagerName = extractCareManagerName(popupText);
         const signature = renderSignature(credentials.signatureTemplate, careManagerName);
 
-        let filled = false;
-        for (const label of selectors.careLog.signatureInputLabels) {
-          const inputField = popup.getByLabel(label).first();
-          if (await inputField.isVisible().catch(() => false)) {
-            await inputField.fill(signature);
-            filled = true;
-            break;
-          }
+        const inputField = dialog.locator('input[name="name"], input[type="text"], textarea').last();
+        if (!(await inputField.isVisible().catch(() => false))) {
+          throw new Error("Signature field not found");
         }
-
-        if (!filled) {
-          const inputField = popup.locator("input[type='text'], textarea").last();
-          if (!(await inputField.isVisible().catch(() => false))) {
-            throw new Error("Signature field not found");
-          }
-          await inputField.fill(signature);
-        }
+        await inputField.fill(signature);
 
         for (const submitText of selectors.careLog.submitSignatureText) {
-          const submit = popup.getByRole("button", { name: submitText }).first();
+          const submit = dialog.getByRole("button", { name: submitText }).first();
           if (await submit.isVisible().catch(() => false)) {
             await submit.click();
-            await popup.waitForLoadState("networkidle").catch(() => undefined);
+            await page.waitForLoadState("networkidle").catch(() => undefined);
             break;
           }
         }
