@@ -29,6 +29,7 @@ REDIS_URL=<redis url>
 SESSION_SECRET=<secure random secret>
 SIGNATURE_TEMPLATE="// {{careManagerName}} //"
 AUTOMATION_CAPTURE_SNAPSHOTS=false
+ENABLE_MOCK_PREVIEW=false
 ```
 
 Do not commit `.env` files or real credentials.
@@ -56,6 +57,23 @@ ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD='change-me' npm run admin:create
 ```
 
 There is no public signup, client login, or caregiver login.
+
+## Mock UI preview
+
+If Postgres/Redis are not available yet, you can preview the dashboard UI with mock data:
+
+```bash
+ENABLE_MOCK_PREVIEW=true npm run dev
+```
+
+Then open:
+
+```text
+http://localhost:3000/preview
+```
+
+This page does not connect to the target site, does not use real credentials, and is disabled unless
+`ENABLE_MOCK_PREVIEW=true`.
 
 ## Running PostgreSQL and Redis locally
 

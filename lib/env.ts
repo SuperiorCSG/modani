@@ -15,6 +15,10 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+  ENABLE_MOCK_PREVIEW: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
   NEXT_PUBLIC_APP_URL: optionalUrl
 });
 
