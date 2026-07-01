@@ -1,14 +1,8 @@
 import "dotenv/config";
 import { Worker } from "bullmq";
-import IORedis from "ioredis";
-import { env } from "@/lib/env";
 import { logError, logInfo } from "@/lib/logger";
 import { runAutomationJob } from "@/automation/runAutomationJob";
-import type { AutomationJobData } from "@/lib/queue";
-
-const connection = new IORedis(env.REDIS_URL, {
-  maxRetriesPerRequest: null
-});
+import { redisConnectionOptions, type AutomationJobData } from "@/lib/queue";
 
 const worker = new Worker<AutomationJobData>(
   "automation-runs",
@@ -16,7 +10,7 @@ const worker = new Worker<AutomationJobData>(
     logInfo("Starting automation job", { jobId: job.id, runId: job.data.runId });
     await runAutomationJob(job.data.runId);
   },
-  { connection, concurrency: 1 }
+  { connection: redisConnectionOptions(), concurrency: 1 }
 );
 
 worker.on("completed", (job) => {

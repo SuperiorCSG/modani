@@ -1,5 +1,4 @@
-import { Queue } from "bullmq";
-import IORedis from "ioredis";
+import { Queue, type ConnectionOptions } from "bullmq";
 import { env } from "@/lib/env";
 
 export type AutomationJobData = {
@@ -10,10 +9,17 @@ export type SchedulerJobData = {
   scheduleId: string;
 };
 
-function createConnection() {
-  return new IORedis(env.REDIS_URL, {
+export function redisConnectionOptions(): ConnectionOptions {
+  const parsed = new URL(env.REDIS_URL);
+  return {
+    host: parsed.hostname,
+    port: parsed.port ? Number(parsed.port) : 6379,
+    username: parsed.username || undefined,
+    password: parsed.password || undefined,
+    db: parsed.pathname.length > 1 ? Number(parsed.pathname.slice(1)) : undefined,
+    tls: parsed.protocol === "rediss:" ? {} : undefined,
     maxRetriesPerRequest: null
-  });
+  };
 }
 
 let automationQueueInstance: Queue<AutomationJobData> | undefined;
@@ -21,20 +27,21 @@ let schedulerQueueInstance: Queue<SchedulerJobData> | undefined;
 
 export function automationQueue() {
   automationQueueInstance ??= new Queue<AutomationJobData>("automation-runs", {
-    connection: createConnection()
+    connection: redisConnectionOptions()
   });
   return automationQueueInstance;
 }
 
 export function schedulerQueue() {
   schedulerQueueInstance ??= new Queue<SchedulerJobData>("automation-schedules", {
-    connection: createConnection()
+    connection: redisConnectionOptions()
   });
   return schedulerQueueInstance;
 }
 
 export async function enqueueAutomationRun(runId: string): Promise<void> {
-  await automationQueue().add(
+  const queue = automationQueue();
+  await queue.add(
     "run",
     { runId },
     {
